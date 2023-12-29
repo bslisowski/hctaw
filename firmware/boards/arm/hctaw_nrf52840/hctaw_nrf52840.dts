@@ -1,0 +1,213 @@
+// Copyright (c) 2023 Nordic Semiconductor ASA
+// SPDX-License-Identifier: Apache-2.0
+
+/dts-v1/;
+#include <nordic/nrf52840_qiaa.dtsi>
+
+/ {
+	model = "hctaw_nrf52840";
+	compatible = "na,hctaw-nrf52840";
+
+	chosen {
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,display = &st7789v;
+	};
+
+	// zephyr,user {
+	// 	signal-gpios = <&gpio0 22 (GPIO_PULLUP | GPIO_ACTIVE_LOW)>;
+	// };
+
+	misc_pins {
+		compatible = "gpio-leds";
+		fleshcs: flesh_cs {
+			gpios = <&gpio0 22 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 { 
+			gpios = <&gpio0 9 0>;
+		};
+
+		button1: button_1 {
+			gpios = <&gpio0 12 0>;
+		};
+
+		button2: button_2 {
+			gpios = <&gpio1 10 0>;
+		};
+
+		button3: button_3 {
+			gpios = <&gpio0 28 0>;
+		};
+	};
+
+	pwm_pins {
+		compatible = "pwm-leds";
+
+		pwmled0: pwmled_0 {
+			pwms = < &pwm0 0 PWM_HZ(100) 0 >;
+		};
+	};
+
+	aliases {
+		btn0 = &button0;
+		btn1 = &button1;
+		btn2 = &button2;
+		btn3 = &button3;
+		tftled = &pwmled0;
+		fleshcs = &fleshcs;
+	};
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x0 0xc000>;
+		};
+		slot0_partition: partition@c000 {
+			label = "image-0";
+			reg = <0xc000 0x00067000>;
+		};
+		slot1_partition: partition@73000 {
+			label = "image-1";
+			reg = <0x73000 0x00067000>;
+		};
+		scratch_partition: partition@da000 {
+			label = "image-scratch";
+			reg = <0xda000 0x0001e000>;
+		};
+		storage_partition: partition@f8000 {
+			label = "storage";
+			reg = <0xf8000 0x00008000>;
+		};
+	};
+};
+
+
+&pwm0 {
+	status = "okay";
+	pinctrl-0 = <&pwm0_default>;
+    pinctrl-names = "default";
+};
+
+&i2c0 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-names = "default";
+	bme680@76 {
+		compatible = "bosch,bme680";
+		reg = <0x76>;
+	};
+
+	bmi160@68 {
+		compatible = "bosch,bmi160";
+		reg = <0x68>;
+		int-gpios = <&gpio1 14 0>, <&gpio1 12 0>;
+	};
+
+	ds3231@d0 {
+		compatible = "maxim,ds3231";
+		reg = <0xD0>;
+		isw-gpios = <&gpio0 11 0>;
+	};
+
+	lis3dh@0 {
+		compatible = "st,lis3dh";
+		reg = <0x0 >;
+	};
+
+	
+};
+
+&adc {
+	status = "okay";
+};
+
+&spi1 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	pinctrl-0 = <&spi1_default>;
+	pinctrl-1 = <&spi1_sleep>;
+	pinctrl-names = "default", "sleep";
+	cs-gpios = <&gpio0 8 GPIO_ACTIVE_LOW>;
+
+	st7789v: st7789v@0 {
+        compatible = "sitronix,st7789v";
+		spi-max-frequency = <20000000>;
+		reg = <0>;
+		cmd-data-gpios = <&gpio0 5 GPIO_ACTIVE_LOW>;	// A1
+		reset-gpios = <&gpio1 9 (GPIO_ACTIVE_LOW)>;		// A0
+		width = <240>;
+		height = <240>;
+		x-offset = <0>;
+		y-offset = <0>;
+		vcom = <0x19>;
+		gctrl = <0x35>;
+		vrhs = <0x12>;
+		vdvs = <0x20>;
+		mdac = <0x00>;
+		gamma = <0x01>;
+		colmod = <0x65>;
+		lcm = <0x2c>;
+		porch-param = [0c 0c 00 33 33];
+		cmd2en-param = [5a 69 02 01];
+		pwctrl1-param = [a4 a1];
+		pvgam-param = [D0 04 0D 11 13 2B 3F 54 4C 18 0D 0B 1F 23];
+		nvgam-param = [D0 04 0C 11 13 2C 3F 44 51 2F 1F 1F 20 23];
+		ram-param = [00 F0];
+		rgb-param = [CD 08 14];
+    };
+};
+
+
+&pinctrl {
+
+	pwm0_default: pwm0_default {
+		group1 {
+			psels = <NRF_PSEL(PWM_OUT0, 0, 26) >;
+		};
+	};
+
+	i2c0_default: i2c0_default {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SCL, 0, 6)>, <NRF_PSEL(TWIM_SDA, 0, 7)>;
+		};
+	};
+
+	spi1_default: spi1_default {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 0, 19)>,
+		   <NRF_PSEL(SPIM_MOSI, 0, 13)>,
+		   <NRF_PSEL(SPIM_MISO, 0, 15)>;
+		};
+	};
+
+	spi1_sleep: spi1_sleep {
+		group1 {
+			psels = <NRF_PSEL(SPIM_SCK, 0, 19)>,
+				<NRF_PSEL(SPIM_MOSI, 0, 13)>,
+				<NRF_PSEL(SPIM_MISO, 0, 15)>;
+			low-power-enable;
+		};
+	};
+};
+
